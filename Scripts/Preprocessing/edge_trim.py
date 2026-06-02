@@ -13,12 +13,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy.signal import butter, sosfiltfilt
+import constants
 
 
 @dataclass
 class EdgeTrimConfig:
-    excel_path: str = "../Data/patient_info.xlsx"
-    output_dir: str = "./Data_preprocessed"
+    excel_path: Path = Path(r"\Data\patient_info.xlsx")
+    output_dir: Path = Path(r"\Data_trimmed")
 
     patient_id_col: str = "编码"
     position_path_cols: Dict[str, str] = None
@@ -69,8 +70,8 @@ class EdgeTrimConfig:
             self.position_path_cols = {
                 "A": "A_path",
                 "E": "E_path",
-                "P": "P_path",
                 "M": "M_path",
+                "P": "P_path",
                 "T": "T_path",
             }
 
@@ -423,6 +424,16 @@ def detect_dynamic_edge_truncation(x_filt: np.ndarray, cfg: EdgeTrimConfig) -> D
 
 def detect_edge_truncation_with_initial_crop(x_filt_full: np.ndarray, cfg: EdgeTrimConfig) -> Dict[str, object]:
     n_full = len(x_filt_full)
+    """
+    Detect unstable recording edges and then apply a fixed post-trim.
+
+    Note:
+        The historical function name contains "initial_crop", but the current
+        implementation does not perform an initial crop. It first runs dynamic
+        edge trimming on the full recording, then removes a fixed proportion
+        from the head and tail of the dynamically retained segment.
+        The name is kept to avoid breaking existing calls.
+    """
 
     # Step 1: dynamic edge truncation directly on the full recording.
     dyn = detect_dynamic_edge_truncation(x_filt_full, cfg)
@@ -770,11 +781,12 @@ def run_edge_trim(cfg: EdgeTrimConfig):
 
 
 if __name__ == "__main__":
+    output_folder = Path(constants.OUTPUT_FOLDER)
     cfg = EdgeTrimConfig(
-        excel_path="../Data/patient_info.xlsx",
-        output_dir="./Data_trimmed",
+        excel_path= Path(r"D:\PycharmProjects\HSCA\Data\patient_info.xlsx"),
+        output_dir= output_folder/"preprocessing"/"Data_trimmed",
         patient_id_col="编码",
-        position_path_cols={"A": "A_path", "E": "E_path", "P": "P_path", "M": "M_path", "T": "T_path"},
+        position_path_cols={"A": "A_path", "E": "E_path",  "M": "M_path", "P": "P_path","T": "T_path"},
         raw_sample_rate=8000,
         edge_post_trim_head_ratio=0.05,
         edge_post_trim_tail_ratio=0.10,

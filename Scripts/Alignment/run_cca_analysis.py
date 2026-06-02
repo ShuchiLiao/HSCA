@@ -3,10 +3,6 @@
 """
 Clean clinically anchored acoustic phenotyping analysis.
 
-This version intentionally uses the fixed column names in
-Clinical_alignment/outputs/prepared/aligned_clinical_clean.csv and removes the
-old regex-based variable discovery / core-panel logic.
-
 Main leakage control
 --------------------
 For every cross-validated analysis, all preprocessing steps are fit only in the
@@ -3411,56 +3407,58 @@ def write_markdown(out_dir: Path, config: Dict, panels: Dict[str, List[str]], si
 # Main
 # =============================================================================
 
-def parse_args():
+def parse_args(argv=None):
     p = argparse.ArgumentParser(description="Clean clinically anchored acoustic phenotyping with fixed aligned_clinical_clean schema")
-    p.add_argument("--embedding-dir", type=str, default="Representation_learning/embeddings_4_1/beats")
+
+    p.add_argument("--embedding-dir", type=str)
     p.add_argument("--patient-embedding-npy", type=str, default=None)
     p.add_argument("--patient-meta-csv", type=str, default=None)
     p.add_argument("--embedding-patient-id-col", type=str, default=None)
-    p.add_argument("--clinical-csv", type=str, default="Clinical_alignment/outputs/prepared/aligned_clinical_clean.csv")
-    p.add_argument("--out-dir", type=str, default="Clinical_alignment/outputs/clinically_anchored_acoustic_phenotyping_clean")
+    p.add_argument("--clinical-csv", type=str)
+    p.add_argument("--out-dir", type=str)
+
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--n-splits", type=int, default=5)
     p.add_argument("--n-components", type=int, default=2)
     p.add_argument("--n-pca", type=int, default=50)
     p.add_argument("--cca-max-iter", type=int, default=3000)
+
     p.add_argument("--min-panel-n", type=int, default=80)
     p.add_argument("--min-target-n", type=int, default=50)
     p.add_argument("--min-nonmissing-clinical-vars", type=int, default=2)
     p.add_argument("--n-axis-groups", type=int, default=4)
     p.add_argument("--min-endpoint-n", type=int, default=80)
     p.add_argument("--min-endpoint-class-n", type=int, default=5)
+
     p.add_argument("--n-bootstrap", type=int, default=1000)
     p.add_argument("--n-loading-bootstrap", type=int, default=200)
     p.add_argument("--n-permutations", type=int, default=100)
     p.add_argument("--n-random-controls", type=int, default=100)
-    p.add_argument(
-        "--n-random-split-repeats",
-        type=int,
-        default=10,
-        help="Number of repeated random 5-fold split runs for CCA and endpoint robustness.",
-    )
+    p.add_argument("--n-random-split-repeats", type=int, default=10, help="Number of repeated random 5-fold split runs for CCA and endpoint robustness.")
     p.add_argument("--skip-repeated-random-split", action="store_true", help="Skip repeated random-split robustness analyses.")
     p.add_argument("--skip-hyperparameter-sensitivity", action="store_true", help="Skip n_pca/n_components hyperparameter sensitivity analyses.")
     p.add_argument("--sensitivity-n-pca-values", type=str, default="20,50,100")
     p.add_argument("--sensitivity-n-components-values", type=str, default="1,2")
     p.add_argument("--skip-endpoint-threshold-sensitivity", action="store_true", help="Skip endpoint-threshold sensitivity analysis.")
-    p.add_argument("--run-position-contribution", action="store_true", default=True)
-    p.add_argument("--no-position-contribution", dest="run_position_contribution", action="store_false")
-    p.add_argument("--progress-every", type=int, default=10)
+
     p.add_argument("--position-embedding-npy", type=str, default=None)
     p.add_argument("--position-meta-csv", type=str, default=None)
     p.add_argument("--position-patient-id-col", type=str, default=None)
     p.add_argument("--position-col", type=str, default=None)
     p.add_argument("--positions", type=str, default="A,E,M,P,T")
-    p.add_argument("--run-leave-one-position-out", action="store_true", default=True)
+    p.add_argument("--no-position-contribution", dest="run_position_contribution", action="store_false")
     p.add_argument("--no-leave-one-position-out", dest="run_leave_one_position_out", action="store_false")
     p.add_argument("--skip-position-endpoint-validation", action="store_true", help="Skip endpoint AUROC sensitivity across only-site and leave-one-site acoustic inputs.")
-    return p.parse_args()
+    p.add_argument("--progress-every", type=int, default=10)
+
+    p.set_defaults(run_position_contribution=True)
+    p.set_defaults(run_leave_one_position_out=True)
+
+    return p.parse_args(argv)
 
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     setup_plotting()
     out_dir = Path(args.out_dir)
     table_dir = out_dir / "tables"
@@ -3734,4 +3732,58 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    from pathlib import Path
+
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+
+    import constants
+
+    min_windows_per_position = constants.MIN_WINDOWN_PER_POSTISIONS
+    patient_pass_min_positions = constants.PATIENT_PASS_MIN_POSTISIONS
+    window_sec = constants.WINDOW_SEC
+    stride_sec = constants.STRIDE_SEC
+
+    route = "beats"
+
+    embedding_dir = (
+        constants.OUTPUT_FOLDER / "representation" / "Embeddings" / route /
+        f"{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}"
+    )
+
+    patient_embedding_npy = embedding_dir / "patient_embeddings.npy"
+    patient_meta_csv = embedding_dir / "patient_meta.csv"
+
+    position_embedding_npy = embedding_dir / "position_embeddings.npy"
+    position_meta_csv = embedding_dir / "position_meta.csv"
+
+    clinical_csv = (constants.OUTPUT_FOLDER / "preprocessing" / "Data_clinic" /
+                    f"{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}"/
+                    "clinical_clean.csv")
+
+    out_dir = (constants.OUTPUT_FOLDER / "alignment" / "CCA" / route /
+               f"{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}")
+
+    main_args = [
+        "--embedding-dir", str(embedding_dir),
+        "--patient-embedding-npy", str(patient_embedding_npy),
+        "--patient-meta-csv", str(patient_meta_csv),
+        "--clinical-csv", str(clinical_csv),
+        "--out-dir", str(out_dir),
+        "--position-embedding-npy", str(position_embedding_npy),
+        "--position-meta-csv", str(position_meta_csv),
+        "--positions", "A,E,M,P,T",
+        "--seed", "42",
+        "--n-splits", "5",
+        "--n-components", "2",
+        "--n-pca", "50",
+        "--n-bootstrap", "1000",
+        "--n-loading-bootstrap", "200",
+        "--n-permutations", "100",
+        "--n-random-controls", "100",
+        "--n-random-split-repeats", "10",
+    ]
+
+    main(main_args)

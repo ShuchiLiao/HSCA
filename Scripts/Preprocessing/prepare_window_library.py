@@ -7,14 +7,16 @@ import re
 
 import numpy as np
 import pandas as pd
+import constants
+
 
 
 @dataclass
 class PrepConfig:
     # Input data
-    input_dir: str = "./Data_trimmed"
-    passed_patients_csv: str = ".passed_patients.csv"
-    output_dir: str = "./Data_representation"
+    input_dir: Path = Path(r"\Data_trimmed")
+    passed_patients_csv: Path = Path(r"Data_screened\passed_patients.csv")
+    output_dir: Path = Path(r"\Data_windows")
 
     # Signal assumptions
     raw_sample_rate: int = 8000
@@ -214,7 +216,7 @@ def run(cfg: PrepConfig):
 
     passed_ids = load_passed_patient_ids(cfg.passed_patients_csv)
     if len(passed_ids) == 0:
-        raise ValueError("No passed patients found in passed_patients.csv")
+        raise ValueError(f"No passed patients found in: {cfg.passed_patients_csv}")
 
     pos_re = re.compile(cfg.position_pattern, re.IGNORECASE)
     input_root = Path(cfg.input_dir)
@@ -266,12 +268,18 @@ def run(cfg: PrepConfig):
 
 
 if __name__ == "__main__":
-    window_sec = 4
-    stride_sec = 1
+    min_windows_per_position = constants.MIN_WINDOWN_PER_POSTISIONS
+    patient_pass_min_positions = constants.PATIENT_PASS_MIN_POSTISIONS
+    window_sec = constants.WINDOW_SEC
+    stride_sec = constants.STRIDE_SEC
     cfg = PrepConfig(
-        input_dir="./Data_trimmed",
-        passed_patients_csv=f"passed_patients_4_win_5_pos_{window_sec}_{stride_sec}.csv",
-        output_dir=f"./window_lib_{window_sec}_{stride_sec}",
+        input_dir=constants.OUTPUT_FOLDER/"preprocessing"/"Data_trimmed",
+        passed_patients_csv=constants.OUTPUT_FOLDER/"preprocessing"/ "Data_screened" / f"passed_patients_{min_windows_per_position}_"
+                                                                       f"{patient_pass_min_positions}"
+                                                                       f"_{window_sec}_{stride_sec}.csv",
+        output_dir= constants.OUTPUT_FOLDER/"preprocessing"/"Data_windows"/f"windows_{min_windows_per_position}_"
+                                                           f"{patient_pass_min_positions}_"
+                                                           f"{window_sec}_{stride_sec}",
         raw_sample_rate=8000,
         window_sec=window_sec,
         stride_sec=stride_sec,

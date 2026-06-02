@@ -32,6 +32,8 @@ Outputs/
 Scripts/Representation/ast
 Scripts/Representation/beats
 Scripts/Representation/panns
+Scripts/constants.py
+
 
 
 

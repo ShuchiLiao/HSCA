@@ -2115,25 +2115,19 @@ def plot_all_results(table_dir: Path, fig_dir: Path, args) -> None:
     )
 
 
-def parse_args():
+def parse_args(argv=None):
     p = argparse.ArgumentParser(description="Regenerate focused all-clinical CCA figures from result tables")
-    p.add_argument(
-        "--result-dir",
-        type=str,
-        default="Clinical_alignment/outputs/clinically_anchored_acoustic_phenotyping_clean_v5",
-        help="Output root containing tables/ and figures/. Ignored for table/fig dirs if those are explicitly given.",
-    )
+    p.add_argument("--result-dir", type=str, default="Outputs/alignment/CCA/beats/4_5_4_1", help="Output root containing tables/ and figures/. Ignored for table/fig dirs if those are explicitly given.")
     p.add_argument("--table-dir", type=str, default=None, help="Directory containing CSV result tables")
     p.add_argument("--fig-dir", type=str, default=None, help="Directory where figures will be saved")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--n-bootstrap", type=int, default=1000)
-    p.add_argument("--retrieval-csv", type=str, default="Representation_learning/select_main_representation_with_ead/mc_retrieval_summary_by_window.csv")
-    p.add_argument("--descriptor-csv", type=str, default="Clinical_alignment/outputs/paper_figures_tables/cache/patient_acoustic_descriptor_profile.csv")
-    return p.parse_args()
+    p.add_argument("--retrieval-csv", type=str, default="Outputs/representation/select_main_representation/mc_retrieval_summary_by_window.csv")
+    p.add_argument("--descriptor-csv", type=str, default="Outputs/alignment/paper_figures_tables/cache/patient_acoustic_descriptor_profile.csv")
+    return p.parse_args(argv)
 
-
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     setup_plotting()
     result_dir = Path(args.result_dir)
     table_dir = Path(args.table_dir) if args.table_dir else result_dir / "tables"
@@ -2145,4 +2139,45 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    from pathlib import Path
+
+    PROJECT_ROOT = Path(__file__).resolve().parents[2]
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+
+    import constants
+
+    min_windows_per_position = constants.MIN_WINDOWN_PER_POSTISIONS
+    patient_pass_min_positions = constants.PATIENT_PASS_MIN_POSTISIONS
+    window_sec = constants.WINDOW_SEC
+    stride_sec = constants.STRIDE_SEC
+
+    route = "beats"
+
+    result_dir = (
+        constants.OUTPUT_FOLDER / "alignment" / "CCA" / route /
+        f"{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}"
+    )
+
+    retrieval_csv = (
+        constants.OUTPUT_FOLDER / "representation" / "Selection" /
+        "mc_retrieval_summary_by_window.csv"
+    )
+
+    descriptor_csv = (
+            constants.OUTPUT_FOLDER / "alignment" / "acoustic_descriptors" /
+            "patient_acoustic_descriptor_profile.csv"
+    )
+
+    main_args = [
+        "--result-dir", str(result_dir),
+        "--table-dir", str(result_dir / "tables"),
+        "--fig-dir", str(result_dir / "figures"),
+        "--retrieval-csv", str(retrieval_csv),
+        "--descriptor-csv", str(descriptor_csv),
+        "--seed", "42",
+        "--n-bootstrap", "1000",
+    ]
+
+    main(main_args)

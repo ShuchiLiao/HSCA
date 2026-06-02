@@ -53,7 +53,7 @@ class ASTAdapter:
         if isinstance(ckpt, dict) and isinstance(ckpt.get("model"), nn.Module):
             return ckpt["model"]
 
-        # Official AST repo path: Representation_learning/ast
+        # Official AST repo path: Representation/ast
         this_file = Path(__file__).resolve()
         project_root = this_file.parent
         ast_root = project_root / "ast"

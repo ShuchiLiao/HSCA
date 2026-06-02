@@ -7,21 +7,30 @@ import re
 
 import numpy as np
 import pandas as pd
+import constants
+
 
 
 @dataclass
 class SimpleScreenConfig:
-    input_dir: str = "./Data_trimmed"
-    output_dir: str = "Data_screened"
+    input_dir: Path = Path(r"\Data_trimmed")
+    output_dir: Path = Path(r"\Data_screened")
 
     raw_sample_rate: int = 8000
+    # Fixed-window setting used to estimate whether each position has enough
+    # usable signal for later representation learning.
     window_sec: float = 4.0
     stride_sec: float = 1.0
     drop_last_short_tail: bool = True
 
-    min_windows_per_position: int = 3
+    # A position passes if its number of candidate windows is within
+    # [min_windows_per_position, max_windows_per_position].
+    min_windows_per_position: int = 4
     max_windows_per_position: int = 35
-    patient_pass_min_positions: int = 4
+
+    # A patient passes if at least this many auscultation positions pass.
+    # Set to 5 for strict A/E/M/P/T completeness.
+    patient_pass_min_positions: int = 5
 
     position_pattern: str = r"^([AEMPT])\.npy$"
     output_filename: str = f"passed_patients.csv"
@@ -139,6 +148,7 @@ def evaluate_one_position(row: dict, cfg: SimpleScreenConfig) -> dict:
         "stride_sec": cfg.stride_sec,
         "n_candidate_windows": int(n_candidate_windows),
         "min_windows_required": int(cfg.min_windows_per_position),
+        "max_windows_allowed": int(cfg.max_windows_per_position),
         "position_pass": int(file_fail_reason == ""),
         "file_fail_reason": file_fail_reason,
     }
@@ -176,30 +186,39 @@ def run_simple_screen(cfg: SimpleScreenConfig):
 
     position_rows = [evaluate_one_position(row, cfg) for row in manifest.to_dict("records")]
     position_df = pd.DataFrame(position_rows).sort_values(["patient_id", "position"]).reset_index(drop=True)
+
     patient_df = summarize_patients(position_df, cfg)
+
     passed_patient_df = patient_df.loc[patient_df["patient_pass"] == 1].copy().reset_index(drop=True)
 
+    # Save complete QC tables for traceability.
+    # position_df.to_csv(out_dir / "position_screening.csv", index=False, encoding="utf-8-sig")
+    # patient_df.to_csv(out_dir / "patient_screening.csv", index=False, encoding="utf-8-sig")
     passed_patient_df.to_csv(out_dir / cfg.output_filename, index=False, encoding="utf-8-sig")
 
-    print(f"Saved to: {out_dir / cfg.output_filename}")
+    print(f"Saved to: {out_dir}")
+    # print("Generated files:")
+    # print(" - position_screening.csv")
+    # print(" - patient_screening.csv")
+    print(f" - {cfg.output_filename}")
     print(f"Passed patients: {len(passed_patient_df)} / {len(patient_df)}")
 
 
 if __name__ == "__main__":
-    min_windows_per_position = 4
-    patient_pass_min_positions = 5
-    window_sec = 4
-    stride_sec = 1
+    min_windows_per_position = constants.MIN_WINDOWN_PER_POSTISIONS
+    patient_pass_min_positions = constants.PATIENT_PASS_MIN_POSTISIONS
+    window_sec = constants.WINDOW_SEC
+    stride_sec = constants.STRIDE_SEC
     cfg = SimpleScreenConfig(
-        input_dir="./Data_trimmed",
-        output_dir="./",
+        input_dir=constants.OUTPUT_FOLDER /"preprocessing"/ "Data_trimmed",
+        output_dir=constants.OUTPUT_FOLDER/"preprocessing"/ "Data_screened",
         raw_sample_rate=8000,
         window_sec=window_sec,
         stride_sec=stride_sec,
         drop_last_short_tail=True,
         min_windows_per_position=min_windows_per_position,
         patient_pass_min_positions=patient_pass_min_positions,
-        output_filename=f"passed_patients_{min_windows_per_position}_win_{patient_pass_min_positions}_pos"
+        output_filename=f"passed_patients_{min_windows_per_position}_{patient_pass_min_positions}"
                         f"_{window_sec}_{stride_sec}.csv"
     )
     run_simple_screen(cfg)

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
+import constants
 
 def load_patient_ids(window_index_csv: str, recording_manifest_csv: str) -> list[str]:
     win_df = pd.read_csv(window_index_csv, dtype={"patient_id": str})
@@ -60,18 +60,18 @@ def split_patients(
     return train_ids, val_ids, test_ids
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Make patient-wise train/val/test split")
     parser.add_argument("--window-lib-path", required=True)
     # parser.add_argument("--window-index-csv", required=True)
     # parser.add_argument("--recording-manifest-csv", required=True)
-    parser.add_argument("--out-dir", default="splits")
+    parser.add_argument("--out-dir", required=True)
     parser.add_argument("--train-ratio", type=float, default=0.7)
     parser.add_argument("--val-ratio", type=float, default=0.1)
     parser.add_argument("--test-ratio", type=float, default=0.2)
     parser.add_argument("--seed", type=int, default=42)
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     out_dir = Path(args.out_dir)
     csv_path = args.window_lib_path
@@ -101,9 +101,24 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    min_windows_per_position = constants.MIN_WINDOWN_PER_POSTISIONS
+    patient_pass_min_positions = constants.PATIENT_PASS_MIN_POSTISIONS
+    window_sec = constants.WINDOW_SEC
+    stride_sec = constants.STRIDE_SEC
+    window_lib_path = (constants.OUTPUT_FOLDER / "preprocessing" / "Data_windows"/
+                       f"windows_{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}")
+    out_dir = (constants.OUTPUT_FOLDER / "representation" / "Data_split"/
+               f"splits_{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}")
+
+    main([
+        "--window-lib-path", str(window_lib_path),
+        "--out-dir", str(out_dir),
+        "--train-ratio", "0.7",
+        "--val-ratio", "0.1",
+        "--test-ratio", "0.2",
+        "--seed", "42",
+    ])
 
 
-#python patient_split.py --window-lib-path ../Data_preprocessing/window_lib_3_3 --out-dir splits_3_3 --train-ratio 0.7 --val-ratio 0.1 --test-ratio 0.2 --seed 42
-#python patient_split.py --window-lib-path ../Data_preprocessing/window_lib_4_4 --out-dir splits_4_4 --train-ratio 0.7 --val-ratio 0.1 --test-ratio 0.2 --seed 42
-#python patient_split.py --window-lib-path ../Data_preprocessing/window_lib_5_5 --out-dir splits_5_5 --train-ratio 0.7 --val-ratio 0.1 --test-ratio 0.2 --seed 42
+# Formal run:
+# python Scripts/Representation/patient_split.py --window-lib-path Outputs/preprocessing/Data_windows/windows_2 --out-dir Outputs/representation/splits --train-ratio 0.7 --val-ratio 0.1 --test-ratio 0.2 --seed 42

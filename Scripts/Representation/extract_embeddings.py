@@ -13,11 +13,11 @@ from tqdm.auto import tqdm
 from aggregation import aggregate_positions_to_patient, build_position_embeddings
 from ast_adapter import ASTAdapter
 from beats_adapter import BEATsAdapter
-from byola_adapter import BYOLAAdapter
 from ead_adapter import EngineeredAcousticDescriptorAdapter
 from panns_adapter import PANNsAdapter
 from routes import SUPPORTED_ROUTE_NAMES, get_route_config
 from window_dataset import WindowDataset, load_patient_ids
+import constants
 
 
 # ---------------------------------------------------------------------
@@ -88,13 +88,6 @@ def build_adapter(
         if not ckpt:
             raise ValueError("checkpoint_path is required for route='beats_adapt'")
         return BEATsAdapter(checkpoint_path=ckpt, device=device, trainable=False)
-
-    if route_name == "byola":
-        if not ckpt:
-            raise ValueError("checkpoint_path is required for route='byola'")
-        if not stats:
-            raise ValueError("stats_path is required for route='byola'")
-        return BYOLAAdapter(checkpoint_path=ckpt, stats_path=stats, device=device)
 
     if route_name == "ead":
         return EngineeredAcousticDescriptorAdapter(device=device)
@@ -195,7 +188,7 @@ def save_embedding_artifacts(
     np.save(out_path / "patient_embeddings.npy", np.asarray(patient_embeddings, dtype=np.float32))
 
 
-def main() -> None:
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(
         description="Extract window/position/patient embeddings for one representation-learning route."
     )
@@ -206,14 +199,16 @@ def main() -> None:
     parser.add_argument("--stats-path", type=str, default=None)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--num-workers", type=int, default=0)
-    parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--out-dir", type=str, required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     print_banner("Representation extraction")
     log_info(f"route            : {args.route}")
     log_info(f"window_lib_path  : {args.window_lib_path}")
     log_info(f"patient_list     : {args.patient_list}")
+    log_info(f"checkpoint_path  : {args.checkpoint_path}")
+    log_info(f"stats_path      : {args.stats_path}")
     log_info(f"device           : {args.device}")
     log_info(f"batch_size       : {args.batch_size}")
     log_info(f"num_workers      : {args.num_workers}")
@@ -276,4 +271,58 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    min_windows_per_position = constants.MIN_WINDOWN_PER_POSTISIONS
+    patient_pass_min_positions = constants.PATIENT_PASS_MIN_POSTISIONS
+    window_sec = constants.WINDOW_SEC
+    stride_sec = constants.STRIDE_SEC
+
+    # route = "ead"  # 改成 SUPPORTED_ROUTE_NAMES 里真实存在的 route 名称
+    route = "beats"
+    # route = "ast"
+    # route = "panns"
+
+
+    window_lib_path = (constants.OUTPUT_FOLDER / "preprocessing" / "Data_windows" /
+                       f"windows_{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}")
+
+    patient_list = (constants.OUTPUT_FOLDER / "representation" / "Data_split" /
+                    f"splits_{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}" /
+                    "all_patients.txt")
+
+    if route == "ast":
+
+        stats_path = (constants.OUTPUT_FOLDER / "representation" / "Stats" /
+                                                    f"{route}_global_logmel_stats_"
+                                                    f"{min_windows_per_position}_"
+                                                    f"{patient_pass_min_positions}_"
+                                                    f"{window_sec}_{stride_sec}.json")
+    else:
+        stats_path = None
+
+    if route == "beats":
+        checkpoint_path = constants.CHECKPOINT_BEATS
+    elif route == "ast":
+        checkpoint_path = constants.CHECKPOINT_AST
+    elif route == "panns":
+        checkpoint_path = constants.CHECKPOINT_PANNS
+    else:
+        checkpoint_path = None
+
+    out_dir = (constants.OUTPUT_FOLDER/ "representation"/ "Embeddings"
+                                                / f"{route}"/f"{min_windows_per_position}_"
+                                                  f"{patient_pass_min_positions}_"
+                                                  f"{window_sec}_{stride_sec}")
+
+    main_args = [
+        "--route", route,
+        "--window-lib-path", str(window_lib_path),
+        "--patient-list", str(patient_list),
+        "--checkpoint-path", str(checkpoint_path),
+        "--stats-path", str(stats_path),
+        "--batch-size", "64",
+        "--num-workers", "4",
+        "--device", "cuda",
+        "--out-dir", str(out_dir),
+    ]
+
+    main(main_args)

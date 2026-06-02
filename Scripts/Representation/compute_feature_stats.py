@@ -11,9 +11,10 @@ from torch.utils.data import DataLoader
 from audio_utils import resample_waveform, right_pad_waveforms, waveforms_to_logmel
 from routes import get_route_config
 from window_dataset import WindowDataset, load_patient_ids
+import constants
 
 
-ALLOWED_ROUTES = ("ast", "byola")
+ALLOWED_ROUTES = ("ast", )
 
 
 def _collate_waveform_batch(batch: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -133,9 +134,9 @@ def compute_global_stats(
     }
 
 
-def main() -> None:
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(
-        description="Compute global log-Mel mean/std for AST or BYOL-A on the training window set."
+        description="Compute global log-Mel mean/std for AST on the training window set."
     )
     parser.add_argument("--route", type=str, required=True, choices=ALLOWED_ROUTES)
     parser.add_argument("--window-lib-path", type=str, required=True)
@@ -145,13 +146,14 @@ def main() -> None:
     parser.add_argument("--out-json", type=str, required=True)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--device", type=str, default="cpu")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     patient_ids = load_patient_ids(args.train_patient_list)
-    csv_path = args.window_lib_path
+    window_lib_path = Path(args.window_lib_path)
+
     dataset = WindowDataset(
-        window_index_csv=f"{csv_path}/window_index.csv",
-        recording_manifest_csv=f"{csv_path}/recording_manifest.csv",
+        window_index_csv=window_lib_path / "window_index.csv",
+        recording_manifest_csv=window_lib_path / "recording_manifest.csv",
         patient_ids=patient_ids,
     )
 
@@ -172,4 +174,27 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    min_windows_per_position = constants.MIN_WINDOWN_PER_POSTISIONS
+    patient_pass_min_positions = constants.PATIENT_PASS_MIN_POSTISIONS
+    window_sec = constants.WINDOW_SEC
+    stride_sec = constants.STRIDE_SEC
+    route = "ast"
+    window_lib_path = (constants.OUTPUT_FOLDER / "preprocessing" / "Data_windows" /
+                       f"windows_{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}")
+    train_patient_list = (constants.OUTPUT_FOLDER / "representation"/"Data_split"/
+                          f"splits_{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}" /
+                          "train_patients.txt")
+    out_json = (constants.OUTPUT_FOLDER / "representation" / "Stats" /
+                                                f"{route}_global_logmel_stats_"
+                                                f"{min_windows_per_position}_"
+                                                f"{patient_pass_min_positions}_"
+                                                f"{window_sec}_{stride_sec}.json")
+
+    main([
+        "--route", route,
+        "--window-lib-path", str(window_lib_path),
+        "--train-patient-list", str(train_patient_list),
+        "--out-json", str(out_json),
+        "--batch-size", "64",
+        "--device", "cuda",
+    ])

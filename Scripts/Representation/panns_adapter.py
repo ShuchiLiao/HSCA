@@ -48,7 +48,7 @@ class PANNsAdapter:
 
         Expected layout
         ---------------
-        representation_learning/
+        Scripts/Representation/
         ├── panns_adapter.py
         └── panns/
             └── pytorch/

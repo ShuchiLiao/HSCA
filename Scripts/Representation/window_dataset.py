@@ -157,13 +157,14 @@ class WindowDataset(Dataset):
         }
 
     def _resolve_window_library_path(self, raw_path: str) -> Path:
-        """Resolve a window library path robustly.
+        """Resolve a window-library path robustly.
 
-        The prepared CSVs often store relative paths such as
-        ``Data_representation/window_library/...``. In the current project,
-        these files live under the ``Data_processing`` folder, so we try a small
-        set of sensible candidate roots.
-        """
+        The prepared CSVs may store either absolute paths or relative paths such as
+        ``window_library/<patient_id>/A_windows.npy``. In this project, the formal
+        window library is expected under ``Outputs/preprocessing/Data_windows``.
+        Therefore, path resolution tries the raw path first and then several roots
+        relative to ``window_index.csv`` and ``recording_manifest.csv``."""
+
         p = Path(raw_path)
         candidates = []
 

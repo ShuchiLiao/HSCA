@@ -8,16 +8,15 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm.auto import tqdm
+import constants
 
 POSITION_ORDER: Tuple[str, ...] = ("A", "E", "M", "P", "T")
-WINDOW_ORDER: Tuple[str, ...] = ("3_3", "4_4", "5_5")
+WINDOW_ORDER: Tuple[str, ...] = ("2_5_3_3", "2_5_4_4", "2_5_5_5")
 
 ROUTE_DISPLAY_NAME = {
     "beats": "BEATs",
     "panns": "PANNs",
     "ast": "AST",
-    "beats_adapt": "BEATs_adapt",
-    "byola": "BYOL-A",
     "ead": "EAD",
 }
 
@@ -25,14 +24,14 @@ ROUTE_PALETTE = {
     "beats": "#1f7a8c",      # teal-blue
     "panns": "#f28e2b",      # warm orange
     "ast": "#4e79a7",        # cool blue
-    "beats_adapt": "#b07aa1",# purple
-    "byola": "#59a14f",      # green
+    # "beats_adapt": "#b07aa1",# purple
+    # "byola": "#59a14f",      # green
     "ead": "#9c755f",        # muted brown
 }
 WINDOW_PALETTE = {
-    "3_3": "#1f7a8c",
-    "4_4": "#7b6fd0",
-    "5_5": "#f28e2b",
+    "2_5_3_3": "#1f7a8c",
+    "2_5_4_4": "#7b6fd0",
+    "2_5_5_5": "#f28e2b",
 }
 METRIC_PALETTE = {
     "rank1": "#1f7a8c",
@@ -90,14 +89,16 @@ def _validate_meta_and_embeddings(meta_df: pd.DataFrame, embeddings: np.ndarray,
             f"{name} size mismatch: len(meta_df)={len(meta_df)} vs embeddings.shape[0]={embeddings.shape[0]}"
         )
 
+def _resolve_route_setting_dir(embedding_root: Path, route_name: str, window_setting: str) -> Path:
+    """Resolve one embedding directory.
 
-def _window_label_from_root(root: Path) -> str:
-    name = root.name
-    if name.startswith("embedding_"):
-        return name.replace("embedding_", "")
-    if name.startswith("embeddings_"):
-        return name.replace("embeddings_", "")
-    return name
+    Expected layout:
+        Outputs/representation/Embeddings/{route_name}/{window_setting}/
+
+    Example:
+        Outputs/representation/Embeddings/beats/4_5_4_1/
+    """
+    return embedding_root / route_name / window_setting
 
 
 def _load_route_window_embeddings(route_dir: str) -> tuple[pd.DataFrame, np.ndarray]:
@@ -350,16 +351,20 @@ def summarize_route_across_windows(summary_by_window_df: pd.DataFrame) -> pd.Dat
     return out
 
 
-def summarize_pairwise_matrix(route_name: str, pairwise_df: pd.DataFrame) -> pd.DataFrame:
+def summarize_pairwise_matrix(route_name: str, window_setting: str, pairwise_df: pd.DataFrame) -> pd.DataFrame:
     out = pairwise_df.groupby(["query_position", "gallery_position"], as_index=False)[["rank1", "top5", "mAP"]].mean()
     out.insert(0, "route_name", route_name)
-    out.insert(0, "window_setting", "4_4")
+    out.insert(0, "window_setting", window_setting)
     return out
 
 
-def _window_ordered(df: pd.DataFrame) -> pd.DataFrame:
+def _window_ordered(df: pd.DataFrame, window_order: List[str]) -> pd.DataFrame:
     out = df.copy()
-    out["window_setting"] = pd.Categorical(out["window_setting"], categories=list(WINDOW_ORDER), ordered=True)
+    out["window_setting"] = pd.Categorical(
+        out["window_setting"],
+        categories=list(window_order),
+        ordered=True,
+    )
     return out.sort_values("window_setting")
 
 
@@ -367,9 +372,16 @@ def _route_label(route_name: str) -> str:
     return ROUTE_DISPLAY_NAME.get(route_name, route_name)
 
 
-def plot_window_sensitivity(summary_by_window_df: pd.DataFrame, value_col: str, title: str, ylabel: str, out_stem: Path) -> None:
+def plot_window_sensitivity(
+    summary_by_window_df: pd.DataFrame,
+    window_order: List[str],
+    value_col: str,
+    title: str,
+    ylabel: str,
+    out_stem: Path,
+) -> None:
     fig, ax = plt.subplots(figsize=(10.8, 6.5))
-    df = _window_ordered(summary_by_window_df)
+    df = _window_ordered(summary_by_window_df, window_order)
     for route_name, sub in df.groupby("route_name", sort=False):
         ax.plot(
             sub["window_setting"].astype(str),
@@ -434,42 +446,113 @@ def plot_pairwise_heatmaps(pairwise_summary_df: pd.DataFrame, route_order: List[
     _save_figure(fig, out_stem)
 
 
-def make_all_plots(summary_by_window_df: pd.DataFrame, route_average_df: pd.DataFrame, per_position_4_4_df: pd.DataFrame, pairwise_4_4_summary_df: pd.DataFrame, fig_dir: Path) -> None:
+def make_all_plots(
+    summary_by_window_df: pd.DataFrame,
+    route_average_df: pd.DataFrame,
+    per_position_pairwise_df: pd.DataFrame,
+    pairwise_summary_df: pd.DataFrame,
+    fig_dir: Path,
+    window_order: List[str],
+    pairwise_window: str,
+) -> None:
     fig_dir.mkdir(parents=True, exist_ok=True)
     route_order = route_average_df["route_name"].tolist()
-    plot_window_sensitivity(summary_by_window_df, "five_view_rank1", "Window-length sensitivity: five-position Monte Carlo retrieval", "Rank-1", fig_dir / "fig_01_five_view_rank1_window_sensitivity")
-    plot_window_sensitivity(summary_by_window_df, "five_view_mAP", "Window-length sensitivity: five-position Monte Carlo retrieval", "mAP", fig_dir / "fig_02_five_view_mAP_window_sensitivity")
-    plot_window_sensitivity(summary_by_window_df, "single_to_four_rank1", "Window-length sensitivity: single-position to four-position retrieval", "Rank-1", fig_dir / "fig_03_single_to_four_rank1_window_sensitivity")
-    plot_window_sensitivity(summary_by_window_df, "single_to_four_mAP", "Window-length sensitivity: single-position to four-position retrieval", "mAP", fig_dir / "fig_04_single_to_four_mAP_window_sensitivity")
-    plot_position_line(per_position_4_4_df, route_order, "single_to_four_rank1", "Rank-1", "Single-position to four-position retrieval by query position (4 s / 4 s anchors)", fig_dir / "fig_05_single_to_four_rank1_by_position_4_4")
-    plot_position_line(per_position_4_4_df, route_order, "single_to_four_mAP", "mAP", "Single-position to four-position retrieval by query position (4 s / 4 s anchors)", fig_dir / "fig_06_single_to_four_mAP_by_position_4_4")
-    plot_pairwise_heatmaps(pairwise_4_4_summary_df, route_order, "rank1", "Pairwise cross-position retrieval matrix (Rank-1, 4 s / 4 s anchors)", fig_dir / "fig_07_pairwise_rank1_heatmaps_4_4")
-    plot_pairwise_heatmaps(pairwise_4_4_summary_df, route_order, "mAP", "Pairwise cross-position retrieval matrix (mAP, 4 s / 4 s anchors)", fig_dir / "fig_08_pairwise_mAP_heatmaps_4_4")
 
+    plot_window_sensitivity(
+        summary_by_window_df,
+        window_order,
+        "five_view_rank1",
+        "Window-setting sensitivity: five-position Monte Carlo retrieval",
+        "Rank-1",
+        fig_dir / "fig_01_five_view_rank1_window_sensitivity",
+    )
+    plot_window_sensitivity(
+        summary_by_window_df,
+        window_order,
+        "five_view_mAP",
+        "Window-setting sensitivity: five-position Monte Carlo retrieval",
+        "mAP",
+        fig_dir / "fig_02_five_view_mAP_window_sensitivity",
+    )
+    plot_window_sensitivity(
+        summary_by_window_df,
+        window_order,
+        "single_to_four_rank1",
+        "Window-setting sensitivity: single-position to four-position retrieval",
+        "Rank-1",
+        fig_dir / "fig_03_single_to_four_rank1_window_sensitivity",
+    )
+    plot_window_sensitivity(
+        summary_by_window_df,
+        window_order,
+        "single_to_four_mAP",
+        "Window-setting sensitivity: single-position to four-position retrieval",
+        "mAP",
+        fig_dir / "fig_04_single_to_four_mAP_window_sensitivity",
+    )
 
-def main() -> None:
+    plot_position_line(
+        per_position_pairwise_df,
+        route_order,
+        "single_to_four_rank1",
+        "Rank-1",
+        f"Single-position to four-position retrieval by query position ({pairwise_window})",
+        fig_dir / f"fig_05_single_to_four_rank1_by_position_{pairwise_window}",
+    )
+    plot_position_line(
+        per_position_pairwise_df,
+        route_order,
+        "single_to_four_mAP",
+        "mAP",
+        f"Single-position to four-position retrieval by query position ({pairwise_window})",
+        fig_dir / f"fig_06_single_to_four_mAP_by_position_{pairwise_window}",
+    )
+    plot_pairwise_heatmaps(
+        pairwise_summary_df,
+        route_order,
+        "rank1",
+        f"Pairwise cross-position retrieval matrix (Rank-1, {pairwise_window})",
+        fig_dir / f"fig_07_pairwise_rank1_heatmaps_{pairwise_window}",
+    )
+    plot_pairwise_heatmaps(
+        pairwise_summary_df,
+        route_order,
+        "mAP",
+        f"Pairwise cross-position retrieval matrix (mAP, {pairwise_window})",
+        fig_dir / f"fig_08_pairwise_mAP_heatmaps_{pairwise_window}",
+    )
+
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(
         description="Monte Carlo retrieval evaluation with window-length sensitivity probing and pairwise cross-position probing."
     )
-    parser.add_argument("--embedding-roots", type=str, nargs="+", default=["embedding_3_3", "embedding_4_4", "embedding_5_5"])
+    parser.add_argument("--embedding-root", type=str, required=True)
     parser.add_argument("--routes", type=str, nargs="+", default=["beats", "panns", "ast", "ead"])
+    parser.add_argument("--window-settings", type=str, nargs="+", required=True)
     parser.add_argument("--n-repeats", type=int, default=20)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--pairwise-window", type=str, default="4_4")
+    parser.add_argument("--pairwise-window", type=str, default="2_5_4_4") #pairwise cross-position retrieval，会做 A→E、A→M、A→P、A→T、E→A 等两两部位检索矩阵。代码只对 --pairwise-window 指定的那一个 setting 做。
+    parser.add_argument("--skip-pairwise", action="store_true")
     parser.add_argument("--out-dir", type=str, required=True)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     set_publication_style()
 
     dataset_meta_dict: Dict[tuple[str, str], pd.DataFrame] = {}
     dataset_emb_dict: Dict[tuple[str, str], np.ndarray] = {}
-    for root_str in args.embedding_roots:
-        root = Path(root_str)
-        window_setting = _window_label_from_root(root)
+
+    embedding_root = Path(args.embedding_root)
+
+    for window_setting in args.window_settings:
         for route_name in args.routes:
-            route_dir = root / route_name
+            route_dir = _resolve_route_setting_dir(
+                embedding_root=embedding_root,
+                route_name=route_name,
+                window_setting=window_setting,
+            )
             if not route_dir.exists():
-                raise FileNotFoundError(f"Missing route directory: {route_dir}")
+                raise FileNotFoundError(f"Missing embedding directory: {route_dir}")
+
             meta_df, emb = _load_route_window_embeddings(str(route_dir))
             dataset_meta_dict[(window_setting, route_name)] = meta_df
             dataset_emb_dict[(window_setting, route_name)] = emb
@@ -489,10 +572,7 @@ def main() -> None:
     pairwise_repeat_rows = []
     pairwise_summary_rows = []
 
-    for root_str in tqdm(args.embedding_roots, desc="Window settings"):
-        root = Path(root_str)
-        window_setting = _window_label_from_root(root)
-
+    for window_setting in tqdm(args.window_settings, desc="Window settings"):
         for route_name in tqdm(args.routes, desc=f"Routes@{window_setting}", leave=False):
             meta_df = dataset_meta_dict[(window_setting, route_name)]
             emb = dataset_emb_dict[(window_setting, route_name)]
@@ -515,15 +595,19 @@ def main() -> None:
             five_repeat_rows.append(five_df)
             single_repeat_rows.append(single_df)
 
-            if window_setting == args.pairwise_window:
+            if (not args.skip_pairwise) and window_setting == args.pairwise_window:
                 pairwise_df = mc_retrieval_pairwise_position(index_map, patient_ids, emb, int(args.n_repeats), int(args.seed))
                 pairwise_df.insert(0, "route_name", route_name)
                 pairwise_df.insert(0, "window_setting", window_setting)
                 pairwise_repeat_rows.append(pairwise_df)
-                pairwise_summary_rows.append(summarize_pairwise_matrix(route_name, pairwise_df))
+                pairwise_summary_rows.append(summarize_pairwise_matrix(route_name, window_setting, pairwise_df))
 
     summary_by_window_df = pd.DataFrame(summary_rows)
-    summary_by_window_df["window_setting"] = pd.Categorical(summary_by_window_df["window_setting"], categories=list(WINDOW_ORDER), ordered=True)
+    summary_by_window_df["window_setting"] = pd.Categorical(
+        summary_by_window_df["window_setting"],
+        categories=list(args.window_settings),
+        ordered=True,
+    )
     summary_by_window_df = summary_by_window_df.sort_values(
         by=["window_setting", "five_view_rank1", "five_view_mAP", "single_to_four_rank1", "single_to_four_mAP", "route_name"],
         ascending=[True, False, False, False, False, True],
@@ -534,7 +618,9 @@ def main() -> None:
     per_position_df = pd.concat(per_position_rows, ignore_index=True)
     five_repeat_df = pd.concat(five_repeat_rows, ignore_index=True)
     single_repeat_df = pd.concat(single_repeat_rows, ignore_index=True)
-    per_position_4_4_df = per_position_df[per_position_df["window_setting"] == args.pairwise_window].copy()
+    per_position_pairwise_df = per_position_df[
+        per_position_df["window_setting"] == args.pairwise_window
+        ].copy()
 
     if pairwise_repeat_rows:
         pairwise_repeat_df = pd.concat(pairwise_repeat_rows, ignore_index=True)
@@ -549,10 +635,26 @@ def main() -> None:
     single_repeat_df.to_csv(out_dir / "mc_retrieval_single_to_four_per_repeat.csv", index=False, encoding="utf-8-sig")
     per_position_df.to_csv(out_dir / "mc_retrieval_single_to_four_by_position.csv", index=False, encoding="utf-8-sig")
     if not pairwise_repeat_df.empty:
-        pairwise_repeat_df.to_csv(out_dir / "mc_retrieval_pairwise_position_per_repeat_4_4.csv", index=False, encoding="utf-8-sig")
-        pairwise_summary_df.to_csv(out_dir / "mc_retrieval_pairwise_position_summary_4_4.csv", index=False, encoding="utf-8-sig")
+        pairwise_repeat_df.to_csv(
+            out_dir / f"mc_retrieval_pairwise_position_per_repeat_{args.pairwise_window}.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
+        pairwise_summary_df.to_csv(
+            out_dir / f"mc_retrieval_pairwise_position_summary_{args.pairwise_window}.csv",
+            index=False,
+            encoding="utf-8-sig",
+        )
 
-    make_all_plots(summary_by_window_df, route_average_df, per_position_4_4_df, pairwise_summary_df, fig_dir)
+    make_all_plots(
+        summary_by_window_df=summary_by_window_df,
+        route_average_df=route_average_df,
+        per_position_pairwise_df=per_position_pairwise_df,
+        pairwise_summary_df=pairwise_summary_df,
+        fig_dir=fig_dir,
+        window_order=list(args.window_settings),
+        pairwise_window=args.pairwise_window,
+    )
 
     print(f"Saved summary-by-window to: {out_dir / 'mc_retrieval_summary_by_window.csv'}")
     print(f"Saved route-average summary to: {out_dir / 'mc_retrieval_summary_across_windows.csv'}")
@@ -560,11 +662,33 @@ def main() -> None:
     print(f"Saved single-to-four per-repeat detail to: {out_dir / 'mc_retrieval_single_to_four_per_repeat.csv'}")
     print(f"Saved single-to-four by-position summary to: {out_dir / 'mc_retrieval_single_to_four_by_position.csv'}")
     if not pairwise_repeat_df.empty:
-        print(f"Saved pairwise per-repeat detail to: {out_dir / 'mc_retrieval_pairwise_position_per_repeat_4_4.csv'}")
-        print(f"Saved pairwise summary to: {out_dir / 'mc_retrieval_pairwise_position_summary_4_4.csv'}")
+        print(
+            f"Saved pairwise per-repeat detail to: "
+            f"{out_dir / f'mc_retrieval_pairwise_position_per_repeat_{args.pairwise_window}.csv'}"
+        )
+        print(
+            f"Saved pairwise summary to: "
+            f"{out_dir / f'mc_retrieval_pairwise_position_summary_{args.pairwise_window}.csv'}"
+        )
     print(f"Saved figures to: {fig_dir}")
     print(route_average_df.to_string(index=False))
 
 
 if __name__ == "__main__":
-    main()
+
+    embedding_root = constants.OUTPUT_FOLDER / "representation" / "Embeddings"
+    out_dir = constants.OUTPUT_FOLDER / "representation" / "Selection"
+
+    routes = ["beats", "panns", "ast", "ead"]
+    window_settings = ["2_5_3_3", "2_5_4_4", "2_5_5_5"]
+
+    n_repeats = 20
+    seed = 42
+    pairwise_window = "2_5_4_4"
+    skip_pairwise = True
+
+    main_args = ["--embedding-root", str(embedding_root), "--routes", *routes, "--window-settings", *window_settings,
+                 "--n-repeats", str(n_repeats), "--seed", str(seed), "--pairwise-window", pairwise_window, "--out-dir", str(out_dir)]
+    main_args += ["--skip-pairwise"] if skip_pairwise else []
+
+    main(main_args)

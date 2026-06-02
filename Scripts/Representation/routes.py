@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-SUPPORTED_ROUTE_NAMES = ("panns", "ast", "beats", "beats_adapt", "byola", "ead")
+SUPPORTED_ROUTE_NAMES = ("panns", "ast", "beats", "ead")
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ def get_route_config(route_name: str) -> RouteConfig:
             fmin=50.0,
             fmax=8000.0,
             norm_mode="global_stats",
-            default_stats_path="artifacts/stats/ast_stats.json",
+            default_stats_path="Outputs/representation/stats/ast_stats.json",
             default_checkpoint_path=None,
             batch_input_layout="B_T_F",
         )
@@ -96,37 +96,6 @@ def get_route_config(route_name: str) -> RouteConfig:
             batch_input_layout="B_L",
         )
 
-    if name == "beats_adapt":
-        return RouteConfig(
-            route_name="beats_adapt",
-            target_sr=16000,
-            frontend_type="official_beats",
-            n_mels=None,
-            frame_ms=None,
-            hop_ms=None,
-            fmin=None,
-            fmax=None,
-            norm_mode="official",
-            default_stats_path=None,
-            default_checkpoint_path="artifacts/checkpoints/beats_adapt/best.pt",
-            batch_input_layout="B_L",
-        )
-
-    if name == "byola":
-        return RouteConfig(
-            route_name="byola",
-            target_sr=16000,
-            frontend_type="logmel",
-            n_mels=64,
-            frame_ms=25.0,
-            hop_ms=10.0,
-            fmin=50.0,
-            fmax=8000.0,
-            norm_mode="global_stats",
-            default_stats_path="artifacts/stats/byola_stats.json",
-            default_checkpoint_path="artifacts/checkpoints/byola/best.pt",
-            batch_input_layout="B_1_F_T",
-        )
 
     if name == "ead":
         return RouteConfig(
