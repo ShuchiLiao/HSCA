@@ -528,7 +528,7 @@ def parse_args(argv=None):
     parser.add_argument("--internal-patient-embeddings", type=Path, default=None)
     parser.add_argument("--internal-patient-meta", type=Path, default=None)
     parser.add_argument("--internal-clinical-table", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\preprocessing\Data_clinic\4_5_4_1\clinical_clean.csv"))
-    parser.add_argument("--external-embedding-dir", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\validation\representation\beats_4s_1s"))
+    parser.add_argument("--external-embedding-dir", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\validation\representation\beats"))
     parser.add_argument("--external-patient-embeddings", type=Path, default=None)
     parser.add_argument("--external-patient-meta", type=Path, default=None)
     parser.add_argument("--external-clinical-table", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_clinic\clinical_clean.csv"))

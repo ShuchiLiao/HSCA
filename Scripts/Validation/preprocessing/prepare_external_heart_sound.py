@@ -402,14 +402,14 @@ def parse_args(argv: Optional[Sequence[str]] = None):
     parser.add_argument("--patient-name-col", type=str, default=None)
     parser.add_argument("--out-root", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing"))
     parser.add_argument("--fs", type=int, default=8000)
-    parser.add_argument("--window-sec", type=float, default=4.0)
-    parser.add_argument("--stride-sec", type=float, default=1.0)
+    parser.add_argument("--window-sec", type=float, default=4)
+    parser.add_argument("--stride-sec", type=float, default=1)
     parser.add_argument("--min-windows-per-position", type=int, default=4)
     parser.add_argument("--max-windows-per-position", type=int, default=35)
     parser.add_argument("--patient-pass-min-positions", type=int, default=5)
     parser.add_argument("--edge-post-trim-head-ratio", type=float, default=0.05)
     parser.add_argument("--edge-post-trim-tail-ratio", type=float, default=0.10)
-    parser.add_argument("--edge-sim-thresh", type=float, default=0.80)
+    parser.add_argument("--edge-sim-thresh", type=float, default=0.8)
     parser.add_argument("--num-workers", type=int, default=8)
     parser.add_argument("--chunksize", type=int, default=16)
     parser.add_argument("--no-edge-plots", action="store_true")
@@ -460,7 +460,7 @@ def main(argv: Optional[Sequence[str]] = None) -> Dict[str, Path]:
         num_workers=args.num_workers,
         chunksize=args.chunksize,
         manifest_sample_n=None,
-        plot_patient_figures=not args.no_edge_plots,
+        plot_patient_figures=args.no_edge_plots,
         plot_subdir="_plots_edge_trim",
     )
     run_edge_trim_for_external_wav(manifest, edge_cfg)

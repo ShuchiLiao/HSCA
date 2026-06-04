@@ -382,10 +382,10 @@ def main(argv=None):
 
 if __name__ == "__main__":
     import constants
-    window_lib_path = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_windows\windows_4_5_4.0_1.0")
+    window_lib_path = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_windows\windows_4_5_4_1")
     patient_list = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_screened\passed_patients.csv")
     checkpoint_path = constants.CHECKPOINT_BEATS
-    out_dir = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\representation/beats_4s_1s")
+    out_dir = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\representation\beats")
 
     main_args = [
         "--window-lib-path", str(window_lib_path),

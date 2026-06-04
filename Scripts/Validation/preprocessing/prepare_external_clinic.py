@@ -388,7 +388,7 @@ def main(argv=None) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     parser = argparse.ArgumentParser(description="Prepare external clinical table for validation.")
     parser.add_argument("--clinical-table", type=Path, default=Path(r"D:\TongJiPCG\同济心音外部验证\中山一院听诊队列.xlsx"))
-    parser.add_argument("--window-meta", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_windows\windows_4_5_4.0_1.0\window_index.csv"))
+    parser.add_argument("--window-meta", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_windows\windows_4_5_4_1\window_index.csv"))
     parser.add_argument("--outdir", type=Path, default=Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_clinic"))
     parser.add_argument("--patient-id-candidates", nargs="+", default=["编码", "序号", "patient_id", "患者编号", "ID"])
     parser.add_argument("--window-seconds", type=float, default=4.0)
