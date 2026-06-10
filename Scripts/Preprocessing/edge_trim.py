@@ -804,7 +804,7 @@ if __name__ == "__main__":
         num_workers=8,
         chunksize=16,
         manifest_sample_n=None,
-        plot_patient_figures=True,
+        plot_patient_figures=False,
         plot_subdir="_plots_edge_trim",
     )
     run_edge_trim(cfg)

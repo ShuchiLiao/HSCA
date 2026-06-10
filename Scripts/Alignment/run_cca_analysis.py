@@ -3752,6 +3752,7 @@ if __name__ == "__main__":
         constants.OUTPUT_FOLDER / "representation" / "Embeddings" / route /
         f"{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}"
     )
+    # embedding_dir = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\representation\beats")
 
     patient_embedding_npy = embedding_dir / "patient_embeddings.npy"
     patient_meta_csv = embedding_dir / "patient_meta.csv"
@@ -3762,9 +3763,11 @@ if __name__ == "__main__":
     clinical_csv = (constants.OUTPUT_FOLDER / "preprocessing" / "Data_clinic" /
                     f"{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}"/
                     "clinical_clean.csv")
+    # clinical_csv = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\preprocessing\Data_clinic\clinical_clean.csv")
 
     out_dir = (constants.OUTPUT_FOLDER / "alignment" / "CCA" / route /
                f"{min_windows_per_position}_{patient_pass_min_positions}_{window_sec}_{stride_sec}")
+    # out_dir = Path(r"D:\PycharmProjects\HSCA\Outputs\validation\alignment_external")
 
     main_args = [
         "--embedding-dir", str(embedding_dir),
