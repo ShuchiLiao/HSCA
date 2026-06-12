@@ -64,7 +64,7 @@ PRETTY_LABELS: Dict[str, str] = {
     "LVEDD_mm": "LVEDD",
     "EF_lt_40": "EF <40%",
     "NYHA_ge_3": "NYHA ≥3",
-    "NTproBNP_ge_900": "NT-proBNP ≥900 pg/mL",
+    "NTproBNP_ge_900": "NT-proBNP ≥900",
     "LVEDD_dilated": "LVEDD dilation",
 }
 
@@ -668,7 +668,7 @@ def draw_endpoint_forest_panel(ax, forest_df: pd.DataFrame, panel_letter: str = 
     y_base = {e: i for i, e in enumerate(endpoint_order)}
     offsets = {"Locked external": -0.14, "External refit": 0.14}
     colors = {"Locked external": "#0072B2", "External refit": "#D55E00"}
-    markers = {"Locked external": "o", "External refit": "s"}
+    markers = {"Locked external": "s", "External refit": "s"}
 
     used_legend_labels = set()
     for _, r in d.iterrows():
@@ -697,7 +697,7 @@ def draw_endpoint_forest_panel(ax, forest_df: pd.DataFrame, panel_letter: str = 
         else:
             value_label = f"{val:.2f}"
         text_x = max(val, hi if np.isfinite(hi) else val) + 0.018
-        ax.text(text_x, y, value_label, va="center", ha="left", fontsize=13)
+        ax.text(text_x, y, value_label, va="center", ha="left", fontsize=17)
 
     ax.axvline(0.5, color="black", lw=1.0, ls="--", alpha=0.8)
     ax.set_xlim(0.45, 1.05)
@@ -709,7 +709,7 @@ def draw_endpoint_forest_panel(ax, forest_df: pd.DataFrame, panel_letter: str = 
 
     handles, labels = ax.get_legend_handles_labels()
     if handles:
-        ax.legend(handles, labels, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.03), ncol=2, fontsize=13, handletextpad=0.5, columnspacing=1.4)
+        ax.legend(handles, labels, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 1.03), ncol=2, fontsize=22, handletextpad=0.5, columnspacing=1.4)
 
     if panel_letter:
         ax.text(-0.17, 1.10, panel_letter, transform=ax.transAxes, ha="left", va="top", fontsize=24, fontweight="bold")
